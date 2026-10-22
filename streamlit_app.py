@@ -18,7 +18,6 @@ def init_db():
 
 init_db()
 
-# --- アプリの基本設定 ---
 st.set_page_config(page_title="大学生のズボラ飯献立ナビ", page_icon="🍳")
 st.title("🍳 大学生のズボラ飯献立ナビ + 保存機能")
 st.write("冷蔵庫にあるものを入力してね。気に入ったレシピはデータベースに保存できるよ！")
@@ -32,7 +31,6 @@ recipe_db = [
     {"name": "鶏肉とキャベツのレンジ蒸し", "main": ["鶏肉", "キャベツ"], "desc": "キャベツの上に鶏肉をのせ、酒と塩を振りレンジで5分。"}
 ]
 
-# 検索結果を保持するためのセッションステート
 if "display_recipes" not in st.session_state:
     st.session_state.display_recipes = []
 
@@ -58,7 +56,6 @@ with tab1:
         else:
             st.error("食材を入力してね。")
 
-    # ボタンのif文の外に出すことで、再実行時にも保存処理が走るようにする
     if st.session_state.display_recipes:
         st.subheader("今日のご飯はこれだ！")
         for r in st.session_state.display_recipes:
@@ -88,8 +85,8 @@ with tab2:
         conn = sqlite3.connect("recipe.db")
         c = conn.cursor()
         
-        # --- 👇 課題で変更するSQL文はここ 👇 ---
-        c.execute("SELECT * FROM favorites")
+        # --- 👇 課題用に ORDER BY id DESC を追加 👇 ---
+        c.execute("SELECT * FROM favorites ORDER BY id DESC")
         
         rows = c.fetchall()
         conn.close()
