@@ -23,7 +23,6 @@ st.set_page_config(page_title="大学生のズボラ飯献立ナビ", page_icon=
 st.title("🍳 大学生のズボラ飯献立ナビ + 保存機能")
 st.write("冷蔵庫にあるものを入力してね。気に入ったレシピはデータベースに保存できるよ！")
 
-# --- ズボラ飯データベース（内蔵データ） ---
 recipe_db = [
     {"name": "爆速！親子丼風レンジ蒸し", "main": ["鶏肉", "卵"], "desc": "鶏肉と麺つゆをレンジでチン。最後に溶き卵を入れてさらに30秒！"},
     {"name": "キャベツと卵のズボラ炒め", "main": ["キャベツ", "卵"], "desc": "キャベツをちぎって炒め、卵を投入。マヨネーズで味付け。"},
@@ -33,7 +32,10 @@ recipe_db = [
     {"name": "鶏肉とキャベツのレンジ蒸し", "main": ["鶏肉", "キャベツ"], "desc": "キャベツの上に鶏肉をのせ、酒と塩を振りレンジで5分。"}
 ]
 
-# --- 2. 機能の実装 ---
+# 検索結果を保持するためのセッションステート
+if "display_recipes" not in st.session_state:
+    st.session_state.display_recipes = []
+
 tab1, tab2 = st.tabs(["🔍 レシピ検索", "⭐ お気に入り一覧"])
 
 with tab1:
@@ -48,31 +50,33 @@ with tab1:
                 if any(item in user_ingredients for item in recipe["main"]):
                     found_recipes.append(recipe)
             
-            st.subheader("今日のご飯はこれだ！")
-            
             if found_recipes:
-                display_recipes = random.sample(found_recipes, min(len(found_recipes), 3))
-                for r in display_recipes:
-                    with st.container():
-                        st.markdown(f"### ✨ {r['name']}")
-                        st.write(f"**作り方:** {r['desc']}")
-                        
-                        # --- データベースへの保存 ---
-                        if st.button("お気に入りに保存", key=f"save_{r['name']}"):
-                            try:
-                                conn = sqlite3.connect("recipe.db")
-                                c = conn.cursor()
-                                c.execute("INSERT INTO favorites (recipe_name, ingredients) VALUES (?, ?)", (r['name'], ", ".join(r['main'])))
-                                conn.commit()
-                                conn.close()
-                                st.success(f"「{r['name']}」を保存しました！タブを切り替えて見てみてね。")
-                            except Exception as e:
-                                st.error(f"保存に失敗しました...: {e}")
-                        st.divider()
+                st.session_state.display_recipes = random.sample(found_recipes, min(len(found_recipes), 3))
             else:
+                st.session_state.display_recipes = []
                 st.warning("その食材に合うレシピが見つからない...適当に炒めちゃおう！")
         else:
             st.error("食材を入力してね。")
+
+    # ボタンのif文の外に出すことで、再実行時にも保存処理が走るようにする
+    if st.session_state.display_recipes:
+        st.subheader("今日のご飯はこれだ！")
+        for r in st.session_state.display_recipes:
+            with st.container():
+                st.markdown(f"### ✨ {r['name']}")
+                st.write(f"**作り方:** {r['desc']}")
+                
+                if st.button("お気に入りに保存", key=f"save_{r['name']}"):
+                    try:
+                        conn = sqlite3.connect("recipe.db")
+                        c = conn.cursor()
+                        c.execute("INSERT INTO favorites (recipe_name, ingredients) VALUES (?, ?)", (r['name'], ", ".join(r['main'])))
+                        conn.commit()
+                        conn.close()
+                        st.success(f"「{r['name']}」を保存しました！タブを切り替えて見てみてね。")
+                    except Exception as e:
+                        st.error(f"保存に失敗しました...: {e}")
+                st.divider()
 
 with tab2:
     st.subheader("保存したお気に入りレシピ")
@@ -84,7 +88,7 @@ with tab2:
         conn = sqlite3.connect("recipe.db")
         c = conn.cursor()
         
-        # --- 👇 課題で変更するSQL文はここです 👇 ---
+        # --- 👇 課題で変更するSQL文はここ 👇 ---
         c.execute("SELECT * FROM favorites")
         
         rows = c.fetchall()
